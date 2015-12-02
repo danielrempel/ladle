@@ -81,12 +81,8 @@ function serve(request)
 	local mime = getMime(ext)
 
 	-- reply with a response, which includes relevant mime type
-	if mime ~= nil then
-		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mime .. "\r\n\r\n")
-	else
-		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type: text/html; encoding: utf8\r\n\r\n") 
+	if nil == mime then
+		mime = "text/html; encoding: utf8"
 	end
 
 	-- determine if file is in binary or ASCII format
@@ -105,9 +101,15 @@ function serve(request)
 	end
 	served = io.open("www/" .. file, flags)
 	if served ~= nil then
+		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
+		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+	
 		local content = served:read("*all")
 		client:send(content)
 	else
+		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
+		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+	
 		-- display not found error
 		err("Not found!")
 	end
