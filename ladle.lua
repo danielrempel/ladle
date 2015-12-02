@@ -78,7 +78,7 @@ function serve(request)
 	end
 		
 	-- retrieve mime type for file based on extension
-	local ext = string.match(file, "%[.]%l%l%l%l?")
+	local ext = string.match(file, "%.%l%l%l%l?")
 	local mime = getMime(ext)
 
 	-- reply with a response, which includes relevant mime type
