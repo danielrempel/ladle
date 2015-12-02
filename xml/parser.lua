@@ -1,7 +1,8 @@
 ----------------------------------------------------
 -- XML parser for use with XML in Lua programs
 -- Version 0.1.1
--- Copyright (c) 2007-2008 Samuel Saint-Pettersen
+-- Original work Copyright (c) 2007-2008 Samuel Saint-Pettersen
+-- Modified work Copyright (c) 2015 Daniel Rempel
 -- Released under the MIT License
 ----------------------------------------------------
 

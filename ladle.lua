@@ -1,7 +1,8 @@
 -----------------------------------------------------
 -- Ladle web server
 -- Version 0.1.1
--- Copyright (c) 2008 Samuel Saint-Pettersen
+-- Original work Copyright (c) 2008 Samuel Saint-Pettersen (original author)
+-- Modified work Copyright (c) 2015 Daniel Rempel
 -- Released under the MIT License
 -----------------------------------------------------
 
