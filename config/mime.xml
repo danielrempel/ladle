@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<mime-config xmlns="/a/proper/namespace/here">
+        <file ext=".html">
+        	<desc>HTML File</desc>
+			<mime>text/html</mime>
+			<bin>false</bin>
+        </file>
+		<file ext=".xml">
+        	<desc>XML File</desc>
+            <mime>application/xml</mime>
+            <bin>false</bin>
+        </file>
+        <file ext=".txt">
+        	<desc>Text File</desc>
+            <mime>text/plain</mime>
+            <bin>false</bin>
+        </file>
+        <file ext=".css">
+        	<desc>Cascading Style Sheet</desc>
+            <mime>text/css</mime>
+            <bin>false</bin>
+        </file>
+		<file ext=".jpg">
+			<desc>JPEG Image</desc>
+			<mime>image/jpeg</mime>
+			<bin>true</bin>
+		</file>
+        <file ext=".gif">
+        	<desc>GIF Image</desc>
+            <mime>image/gif</mime>
+            <bin>true</bin>
+        </file>
+		<file ext=".png">
+			<desc>PNG Image</desc>
+			<mime>image/png</mime>
+			<bin>true</bin>
+		</file>
+		<file ext=".zip">
+            <desc>ZIP Archive</desc>
+        	<mime>application/zip</mime>
+            <bin>true</bin>
+        </file>
+</mime-config>
