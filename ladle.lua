@@ -10,13 +10,6 @@
 socket = require("socket")
 xmlp = require("xml.parser")
 
--- detect operating system
-if os.getenv("WinDir") ~= nil then
-	os = "Windows"
-else
-	os = "Other OS"  -- !
-end
-
 -- load mime configuration file
 mconf = io.open("config/mime.xml", "r")
 if mconf ~= nil then mconf = mconf:read("*all") end
