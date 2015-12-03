@@ -61,6 +61,51 @@ function waitReceive()
 		end
 	end
 end
+
+-- serve requested ordinary file
+function serveFile(file, flags, mime)
+	served = io.open("www/" .. file, flags)
+	if served ~= nil then
+		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
+		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+	
+		local content = served:read("*all")
+		client:send(content)
+	else
+		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
+		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+	
+		-- display not found error
+		err("Not found!")
+	end
+end
+
+function serveLua(file)
+	tmp_lua_script_output_buffer = ""
+	local newEnv = _ENV
+		newEnv["write"] = function(text) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. text end
+	
+	local file_l = io.open("www/" .. file, "r")
+	if file_l
+	then
+		local code = file_l:read("*all")
+		local func, message = load(code, file,"bt", newEnv)
+		if not func
+		then
+			client:send("HTTP/1.1 500 Internal server error\r\nServer: Ladle\r\n")
+			client:send("Content-Type: text/plain\r\n\r\n")
+			client:send(message)
+			return
+		end
+		local retval = pcall(func, function(err) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. "\nError: " .. err end)
+		client:send(tmp_lua_script_output_buffer)
+		return
+	else
+		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
+		client:send("Content-Type: text/plain\r\n\r\n")
+	end
+end
+
 -- serve requested content
 function serve(request)
 	-- resolve requested file from client request
@@ -72,6 +117,7 @@ function serve(request)
 		
 	-- retrieve mime type for file based on extension
 	local ext = string.match(file, "%.%l%l%l%l?")
+	local islua = file:match("%.lua$")
 	local mime = getMime(ext)
 
 	-- reply with a response, which includes relevant mime type
@@ -93,19 +139,12 @@ function serve(request)
 		-- files differently to plain text such as Windows
 		flags = "rb"
 	end
-	served = io.open("www/" .. file, flags)
-	if served ~= nil then
-		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mime .. "\r\n\r\n")
 	
-		local content = served:read("*all")
-		client:send(content)
+	if islua
+	then
+		serveLua(file)
 	else
-		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mime .. "\r\n\r\n")
-	
-		-- display not found error
-		err("Not found!")
+		serveFile(file, flags, mime)
 	end
 
 	-- done with client, close request
