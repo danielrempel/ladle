@@ -1,4 +1,13 @@
-return {
+local mimetypes = {}
+
+function mimetypes.getMime(ext)
+	return mimetypes['mconf'][ext]['mime']
+end
+function mimetypes.isBinary(ext)
+	return mimetypes['mconf'][ext]['bin']
+end
+
+mimetypes["mconf"] = {
 
 	[".html"] = {
 		["mime"] = "text/html",
@@ -20,7 +29,6 @@ return {
 		["mime"] = "application/x-javascript",
 		["bin"] = false,
 		},
-	
 		
 	[".jpg"] = {
 		["mime"] = "image/jpeg",
@@ -42,6 +50,7 @@ return {
 		["mime"] = "image/x-icon",
 		["bin"] = true,
 		},
-	
 
 }
+
+return mimetypes

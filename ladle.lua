@@ -8,9 +8,7 @@
 
 -- load required modules
 socket = require("socket")
-
--- load mime configuration file
-mconf = require('mimetypes')
+mime = require('mimetypes')
 
 -- load configuration file
 local f = io.open('config.lua', 'r')
@@ -22,7 +20,6 @@ end
 
 -- start web server
 function main(arg1)
-
 	-- command line argument overrides config file entry:
 	port = arg1
 	-- if no port specified on command line, use config entry:
@@ -50,7 +47,8 @@ function main(arg1)
 	print(("Serving on %s:%d"):format(hostname,port))
 	waitReceive() -- begin waiting for client requests
 end
--- wait for and receive client requests
+
+-- TODO: Rewrite for multithreading, maybe try implementing keepalive
 function waitReceive()
 	-- loop while waiting for a client request
 	while 1 do
@@ -75,7 +73,8 @@ function waitReceive()
 		end
 	end
 end
--- serve requested content
+
+-- TODO: rewrite, parse whole request into a table
 function serve(request)
 	-- resolve requested file from client request
 	local file = string.match(request, "%w+%/?.?%l+")
@@ -86,15 +85,15 @@ function serve(request)
 		
 	-- retrieve mime type for file based on extension
 	local ext = string.match(file, "%.%l%l%l%l?")
-	local mime = getMime(ext)
+	local mimetype = mime.getMime(ext)
 
 	-- reply with a response, which includes relevant mime type
-	if nil == mime then
-		mime = "text/html; encoding: utf8"
+	if nil == mimetype then
+		mimetype = "text/html"
 	end
 
 	-- determine if file is in binary or ASCII format
-	local binary = isBinary(ext)
+	local binary = mime.isBinary(ext)
 
 	-- load requested file in browser
 	local served, flags
@@ -110,13 +109,13 @@ function serve(request)
 	served = io.open("www/" .. file, flags)
 	if served ~= nil then
 		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")
 	
 		local content = served:read("*all")
 		client:send(content)
 	else
 		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mime .. "\r\n\r\n")
+		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")
 	
 		-- display not found error
 		err("Not found!")
@@ -125,19 +124,14 @@ function serve(request)
 	-- done with client, close request
 	client:close()
 end
--- determine mime type based on file extension
-function getMime(ext)
-	return mconf[ext]['mime']
-end
--- determine if file is binary - true or false
-function isBinary(ext)
-	return mconf[ext]['bin']
-end     
+
 -- display error message and server information
+-- used while serving pages (for different errors like 404, 500 etc)
 function err(message)
 	client:send(message)
 	-- ...
 end
+
 -- invoke program starting point:
 -- parameter is command-line argument for port number
 main(arg[1])
