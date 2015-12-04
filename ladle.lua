@@ -106,6 +106,69 @@ function serveLua(file)
 	end
 end
 
+function executeLua(code, luaEnv, errfunc)
+	local func, message = load(code, "luapage","bt", luaEnv)
+	if not func
+	then
+		errfunc(message)
+		return
+	end
+	local retval = pcall(func, errfunc)
+end
+
+function parseLuaPage(page, luaEnv, appendfunc)
+	local a,b,c
+	
+	while page:len() > 0 do
+		a,b = page:find("%<%?")
+
+		if a
+		then
+			a= a-1
+		
+			appendfunc(page:sub(0,a))
+			page = page:sub(b+1)
+					
+			a,c = page:find("%?%>")
+			if not a
+			then
+				appendfunc("\nError: matching '?>' not found!\n")
+				page = ""
+			else
+				a=a-1
+				local code = page:sub(1,a)
+								
+				executeLua(code, luaEnv, function (err) appendfunc("Error: " .. err) end)
+				page = page:sub(c+1)
+			end
+		else
+			appendfunc(page)
+			page = ""
+		end
+	end
+end
+
+function serveLuaPage(file)
+	tmp_lua_script_output_buffer = ""
+	local newEnv = _ENV
+	newEnv["write"] = function(text) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. text end
+	
+	local file_l = io.open("www/" .. file, "r")
+	if file_l
+	then
+		local page = file_l:read("*all")
+		parseLuaPage(page, newEnv, function(text) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer ..  text end)
+		
+		-- TODO: transform newlines
+		client:send(tmp_lua_script_output_buffer)
+		return
+	else
+		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
+		client:send("Content-Type: text/plain\r\n\r\n")
+		client:send("Sorry! The requested page not found")
+	end
+end
+
 -- serve requested content
 function serve(request)
 	-- resolve requested file from client request
@@ -118,6 +181,7 @@ function serve(request)
 	-- retrieve mime type for file based on extension
 	local ext = string.match(file, "%.%l%l%l%l?")
 	local islua = file:match("%.lua$")
+	local isluapage = file:match("%.lp$")
 	local mime = getMime(ext)
 
 	-- reply with a response, which includes relevant mime type
@@ -143,6 +207,9 @@ function serve(request)
 	if islua
 	then
 		serveLua(file)
+	elseif isluapage
+	then
+		serveLuaPage(file)
 	else
 		serveFile(file, flags, mime)
 	end
