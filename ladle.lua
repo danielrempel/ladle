@@ -62,7 +62,8 @@ function waitReceive()
 		local request, err = client:receive()
 		-- if there's no error, begin serving content or kill server
 		if not err then
-			-- if request is kill (via telnet), stop the server
+			-- if the request text is 'kill' stop the server
+			-- FIXME: close this awesome security hole
 			if request == "kill" then
 				client:send("Ladle has stopped\n")
 				print("Stopped")
