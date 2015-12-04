@@ -12,22 +12,42 @@ socket = require("socket")
 -- load mime configuration file
 mconf = require('mimetypes')
 
+-- load configuration file
+local f = io.open('config.lua', 'r')
+if f then
+	config = require('config')
+	f:close()
+else config = nil
+end
+
 -- start web server
-function main(arg1) 
-	port = arg1 -- set first argument as port
+function main(arg1)
+
+	-- command line argument overrides config file entry:
+	port = arg1
+	-- if no port specified on command line, use config entry:
+	if port == nil then port = config['port'] end
+	-- if still no port, fall back to default port, 80:
+	if port == nil then port = 80 end
+	
+	-- load hostname from config file:
+	hostname = config['hostname']
+	if hostname == nil then hostname = '*' end -- fall back to default
 
 	-- display initial program information
-	print [[Ladle web server v0.1.1
-Copyright (c) 2008 Samuel Saint-Pettersen]]
-
-	-- if no port is specified, use port 80
-	if port == nil then port = 80 end
+	print("Ladle web server v0.1.1")
+	print("Copyright (c) 2008 Samuel Saint-Pettersen")
 
 	-- create tcp socket on localhost:$port
-	server = assert(socket.bind("*", port))
+	server = socket.bind(hostname, port)
+	if not server
+	then
+		print("Failed to bind to given hostname:port")
+		os.exit(1)
+	end
 
 	-- display message to web server is running
-	print("Running on localhost:" .. port)
+	print(("Serving on %s:%d"):format(hostname,port))
 	waitReceive() -- begin waiting for client requests
 end
 -- wait for and receive client requests
