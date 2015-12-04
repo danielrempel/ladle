@@ -8,11 +8,9 @@
 
 -- load required modules
 socket = require("socket")
-xmlp = require("xml.parser")
 
 -- load mime configuration file
-mconf = io.open("config/mime.xml", "r")
-if mconf ~= nil then mconf = mconf:read("*all") end
+mconf = require('mimetypes')
 
 -- start web server
 function main(arg1) 
@@ -25,16 +23,11 @@ Copyright (c) 2008 Samuel Saint-Pettersen]]
 	-- if no port is specified, use port 80
 	if port == nil then port = 80 end
 
-	-- display warning message if configuration missing
-	if mconf == nil then
-		print("\nWarning: MIME config file missing")
-	end 
-
 	-- create tcp socket on localhost:$port
 	server = assert(socket.bind("*", port))
 
 	-- display message to web server is running
-	print("\nRunning on localhost:" .. port)
+	print("Running on localhost:" .. port)
 	waitReceive() -- begin waiting for client requests
 end
 -- wait for and receive client requests
@@ -80,7 +73,7 @@ function serve(request)
 	end
 
 	-- determine if file is in binary or ASCII format
-	local binary = isBinary(mime)
+	local binary = isBinary(ext)
 
 	-- load requested file in browser
 	local served, flags
@@ -113,27 +106,11 @@ function serve(request)
 end
 -- determine mime type based on file extension
 function getMime(ext)
-	local i = 1
-	local exts = xmlp.ctag(mconf, "file")
-	while i < exts do
-		local v = xmlp.vatt(mconf, "file", "ext", i)
-		if v == ext then
-			return xmlp.vtag(mconf, "mime", i)
-		end
-		i = i + 1
-	end
+	return mconf[ext]['mime']
 end
 -- determine if file is binary - true or false
-function isBinary(mime)
-	local i = 1
-	local types = xmlp.ctag(mconf, "mime")
-	while i < types do
-		local v = xmlp.vtag(mconf, "mime", i)
-		if v == mime then
-			return xmlp.vtag(mconf, "bin", i)
-		end
-		i = i + 1
-	end
+function isBinary(ext)
+	return mconf[ext]['bin']
 end     
 -- display error message and server information
 function err(message)
