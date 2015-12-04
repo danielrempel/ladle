@@ -169,13 +169,21 @@ function serveLuaPage(file)
 	end
 end
 
+function file_exists(name)
+   local f=io.open("www/" .. name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
 -- serve requested content
 function serve(request)
 	-- resolve requested file from client request
 	local file = string.match(request, "%w+%/?.?%l+")
 	-- if no file mentioned in request, assume root file is index.html.
 	if file == nil then
-		file = "index.html"
+		if file_exists("index.html") then file = "index.html"
+		elseif file_exists("index.lp") then file = "index.lp"
+		elseif file_exists("index.lua") then file = "index.lua"
+		end
 	end
 		
 	-- retrieve mime type for file based on extension
