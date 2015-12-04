@@ -129,7 +129,7 @@ end
 -- used while serving pages (for different errors like 404, 500 etc)
 function err(message)
 	client:send(message)
-	-- ...
+	client:send("\n\nLadle web server\n")
 end
 
 -- invoke program starting point:

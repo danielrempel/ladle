@@ -1,4 +1,5 @@
 ## Ladle web server
+Simple lua-based web server with minimal dependencies.
 
 Prerequisites:
 
