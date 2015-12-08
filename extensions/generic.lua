@@ -2,10 +2,10 @@ local generic = {}
 
 ladleutil = require('ladleutil')
 
-function generic.handler(request, client)
+function generic.handler(request, client, config)
 	local file, mimetype, flags = ladleutil.getRequestedFileInfo(request)
 
-	local served = io.open("www/" .. file, flags)
+	local served = io.open(config["webroot"] .. file, flags)
 	if served ~= nil then
 		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
 		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")

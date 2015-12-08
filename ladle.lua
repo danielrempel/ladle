@@ -1,10 +1,13 @@
 -----------------------------------------------------
 -- Ladle web server
--- Version 0.1.1
+-- Version 0.1.2
 -- Original work Copyright (c) 2008 Samuel Saint-Pettersen (original author)
 -- Modified work Copyright (c) 2015 Daniel Rempel
 -- Released under the MIT License
 -----------------------------------------------------
+
+Server = "Ladle"
+ServerVersion = "0.1.2"
 
 -- load required modules
 socket = require('socket')
@@ -46,11 +49,11 @@ function checkURI(uri)
 	-- loop til' the first index.* file found
 	if(uri == "")
 	then
-		if ladleutil.fileExists("www/index.html")
+		if ladleutil.fileExists(config["webroot"] .. "index.html")
 		then
 			uri = "index.html"
 		else
-			local wrootIndex = ladleutil.scandir("www/")
+			local wrootIndex = ladleutil.scandir(config["webroot"])
 			local chosenIndex = ""
 
 			for k,v in pairs(wrootIndex) do
@@ -74,7 +77,7 @@ function serve(request, client)
 	local handler = getHandler(request)
 
 	-- Got a handler, run it
-	handler(request, client)
+	handler(request, client, config)
 
 	-- done with client, close request
 	client:close()
@@ -150,10 +153,16 @@ function main(arg1)
 	-- load hostname from config file:
 	local hostname = config['hostname']
 	if hostname == nil then hostname = '*' end -- fall back to default
+	
+	if config["webroot"] == "" or config["webroot"] == nil
+	then
+		config["webroot"] = "www/"
+	end
 
 	-- display initial program information
-	print("Ladle web server v0.1.1")
+	print(("%s web server v%s"):format(Server,ServerVersion))
 	print("Copyright (c) 2008 Samuel Saint-Pettersen")
+	print("Copyright (c) 2015 Daniel Rempel")
 
 	-- create tcp socket on localhost:$port
 	local server = socket.bind(hostname, port)
