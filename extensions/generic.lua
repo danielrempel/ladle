@@ -1,8 +1,8 @@
-local generic = {}
+local extension = {}
 
 ladleutil = require('ladleutil')
 
-function generic.handler(request, client, config)
+function extension.handler(request, client, config)
 	local file, mimetype, flags = ladleutil.getRequestedFileInfo(request)
 
 	local served = io.open(config["webroot"] .. file, flags)
@@ -13,19 +13,19 @@ function generic.handler(request, client, config)
 		local content = served:read("*all")
 		client:send(content)
 	else
+		-- TODO : link to ladle's generic err
 		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
 		client:send("Content-Type: text/plain\r\n\r\n")
 
-		-- display not found error
 		ladleutil.err("Not found!", client)
 	end
 end
 
-function generic.match(filename)
+function extension.match(filename)
 	return true
 end
 
-generic.id = "generic"
-generic.name = "Generic/Static file handler"
+extension.id = "generic"
+extension.name = "Generic/Static file handler"
 
-return generic
+return extension

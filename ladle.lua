@@ -27,15 +27,16 @@ end
 extensions = {}
 
 function getHandler(request)
-	local handler, match = nil, false
+	local handler = nil
 	for k,ext in pairs(extensions) do
-		if ext["id"] ~= "generic"
+		if ext["id"] ~= "generic" and ext.match(request["uri"])
 		then
-			handler, match = ext.handler, ext.match(request["uri"])
+			handler = ext.handler
+			break
 		end
 	end
 	-- no specific match, use generic handler
-	if match == false
+	if not handler
 	then
 		handler = extensions["generic"].handler
 	end
