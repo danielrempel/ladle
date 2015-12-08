@@ -1,5 +1,41 @@
 local ladleutil = {}
 
+mime = require('mimetypes')
+
+function ladleutil.scandir(directory)
+    local i, t, popen = 0, {}, io.popen
+    for filename in popen('ls -a "'..directory..'"'):lines() do
+        i = i + 1
+        t[i] = filename
+    end
+    return t
+end
+
+function ladleutil.getRequestedFileInfo(request)
+	local file = request["uri"]
+
+	-- retrieve mime type for file based on extension
+	local ext = string.match(file, "%.%l%l%l%l?") or ""
+	local mimetype = mime.getMime(ext)
+	if not mimetype then
+		mimetype = "text/html" -- fallback. didn't think out something
+								-- better
+	end
+
+	local flags
+	if mime.isBinary(ext) == false then
+		-- if file is ASCII, use just read flag
+		flags = "r"
+	else
+		-- otherwise file is binary, so also use binary flag (b)
+		-- note: this is for operating systems which read binary
+		-- files differently to plain text such as Windows
+		flags = "rb"
+	end
+
+	return file, mimetype, flags
+end
+
 function ladleutil.fileExists(filename)
 	local f = io.open(filename, 'r')
 	if f then
@@ -25,8 +61,6 @@ end
 
 function ladleutil.parseRequest(request)
 	
-	print("parseRequest: " .. request)
-	
 	local request_table = {}
 	local request_text = request
 
@@ -38,8 +72,6 @@ function ladleutil.parseRequest(request)
 		request_text = request_text:sub(b+1)
 	until line:len() > 0
 
-	print(("Parsing first line: %q"):format(line))
-
 	request_table["method"],request_table["url"],request_table["protocol"] = line:match("^(.-) +(.-) +(.-)$")
 
 	while request_text:len() > 0 do
@@ -47,18 +79,14 @@ function ladleutil.parseRequest(request)
 		local line = request_text:sub(0,a-1)
 		request_text = request_text:sub(b+1)
 
-		print("Parsing line: " .. line)
-
 		if line:len()>0
 		then
 			local key, value = line:match("^(.-): +(.+)$")
-			print( ("%s=%q"):format(key or "nil",value or "nil") )
 			request_table[key] = value
 		end
 	end
 	
 	query_string = (request_table["url"]):match("^/[a-zA-Z.,0-9/]*%??(.*)$") or ""
-	print(("url: %q"):format(request_table["url"]))
 	uri = (request_table["url"]):match("^/([a-zA-Z.,0-9/]*)%??.*$") or ""
 	
 	request_table["query_string"] = query_string -- TODO: base64 decode?

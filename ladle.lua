@@ -8,64 +8,73 @@
 
 -- load required modules
 socket = require('socket')
-mime = require('mimetypes')
 
 -- load server components
 ladleutil = require('ladleutil')
 
 -- load configuration file
+-- TODO: have a default array with config and merge with the loaded one
 if ladleutil.fileExists('config.lua') then
 	config = require('config')
 else
 	config = nil
 end
 
+-- load extensions
+extensions = {}
+
+function getHandler(request)
+	local handler, match = nil, false
+	for k,ext in pairs(extensions) do
+		if ext["id"] ~= "generic"
+		then
+			handler, match = ext.handler, ext.match(request["uri"])
+		end
+	end
+	-- no specific match, use generic handler
+	if match == false
+	then
+		handler = extensions["generic"].handler
+	end
+	return handler
+end
+
+-- checks whether the root index file is requested and finds an appropriate
+-- one if needed
+function checkURI(uri)
+	-- if index file was requested
+	-- loop til' the first index.* file found
+	if(uri == "")
+	then
+		if ladleutil.fileExists("www/index.html")
+		then
+			uri = "index.html"
+		else
+			local wrootIndex = ladleutil.scandir("www/")
+			local chosenIndex = ""
+
+			for k,v in pairs(wrootIndex) do
+			if v:match("index.*")
+			then
+				chosenIndex = "" .. v
+				break
+			end
+			end
+			uri = chosenIndex
+		end
+	end
+	return uri
+end
+
 function serve(request, client)
-	if request["query_string"] then
-		print("request: query: \"" .. request["query_string"] .. "\"")
-	end
 
-	local file = request["uri"]
-	-- if no file mentioned in request, assume root file is index.html.
-	if file == nil or file == "" then
-		file = "index.html"
-	end
+	request["uri"] = checkURI(request["uri"])
 
-	-- retrieve mime type for file based on extension
-	local ext = string.match(file, "%.%l%l%l%l?") or ""
-	local mimetype = mime.getMime(ext)
-	if nil == mimetype then
-		mimetype = "text/html" -- fallback. didn't think out something
-								-- better
-	end
+	-- find an appropriate handler in extensions
+	local handler = getHandler(request)
 
-	local binary = mime.isBinary(ext)
-
-	local served, flags
-	if binary == false then
-		-- if file is ASCII, use just read flag
-		flags = "r"
-	else
-		-- otherwise file is binary, so also use binary flag (b)
-		-- note: this is for operating systems which read binary
-		-- files differently to plain text such as Windows
-		flags = "rb"
-	end
-
-	local served = io.open("www/" .. file, flags)
-	if served ~= nil then
-		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")
-
-		local content = served:read("*all")
-		client:send(content)
-	else
-		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
-		client:send("Content-Type: text/plain\r\n\r\n")
-
-		-- display not found error
-		ladleutil.err("Not found!", client)
-	end
+	-- Got a handler, run it
+	handler(request, client)
 
 	-- done with client, close request
 	client:close()
@@ -98,8 +107,39 @@ function waitReceive(server)
 	end
 end
 
+function loadExtensions()
+	local extdir = "extensions/"
+	local files = ladleutil.scandir(extdir)
+	for i,v in pairs(files) do
+		if v:match("^.+%.lua$")
+		then
+			local extfile = io.open(extdir .. v, "r")
+			local extcode
+			if extfile
+			then
+				extcode = extfile:read("*all")
+			end
+
+			if extcode
+			then
+				local extf, message = load(extcode)
+				if not message
+				then
+					local ext = extf()
+					extensions[ext['id']] = ext
+					print(("Extension %q loaded successfully"):format(ext['name']))
+				else
+					print(("Failed to load extension %s: %q"):format(v, message))
+				end
+			end
+		end
+	end
+end
+
 -- start web server
 function main(arg1)
+	loadExtensions()
+
 	-- command line argument overrides config file entry:
 	local port = arg1
 	-- if no port specified on command line, use config entry:
