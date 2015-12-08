@@ -1,42 +1,171 @@
 -----------------------------------------------------
 -- Ladle web server
--- Version 0.1.1
+-- Version 0.1.2
 -- Original work Copyright (c) 2008 Samuel Saint-Pettersen (original author)
 -- Modified work Copyright (c) 2015 Daniel Rempel
 -- Released under the MIT License
 -----------------------------------------------------
 
+Server = "Ladle"
+ServerVersion = "0.1.2"
+
 -- load required modules
-socket = require("socket")
-mime = require('mimetypes')
+socket = require('socket')
+
+-- load server components
+ladleutil = require('ladleutil')
 
 -- load configuration file
-local f = io.open('config.lua', 'r')
-if f then
+-- TODO: have a default array with config and merge with the loaded one
+if ladleutil.fileExists('config.lua') then
 	config = require('config')
-	f:close()
-else config = nil
+else
+	config = nil
+end
+
+-- load extensions
+extensions = {}
+
+function getHandler(request)
+	local handler, match = nil, false
+	for k,ext in pairs(extensions) do
+		if ext["id"] ~= "generic"
+		then
+			handler, match = ext.handler, ext.match(request["uri"])
+		end
+	end
+	-- no specific match, use generic handler
+	if match == false
+	then
+		handler = extensions["generic"].handler
+	end
+	return handler
+end
+
+-- checks whether the root index file is requested and finds an appropriate
+-- one if needed
+function checkURI(uri)
+	-- if index file was requested
+	-- loop til' the first index.* file found
+	if(uri == "")
+	then
+		if ladleutil.fileExists(config["webroot"] .. "index.html")
+		then
+			uri = "index.html"
+		else
+			local wrootIndex = ladleutil.scandir(config["webroot"])
+			local chosenIndex = ""
+
+			for k,v in pairs(wrootIndex) do
+			if v:match("index.*")
+			then
+				chosenIndex = "" .. v
+				break
+			end
+			end
+			uri = chosenIndex
+		end
+	end
+	return uri
+end
+
+function serve(request, client)
+
+	request["uri"] = checkURI(request["uri"])
+
+	-- find an appropriate handler in extensions
+	local handler = getHandler(request)
+
+	-- Got a handler, run it
+	handler(request, client, config)
+
+	-- done with client, close request
+	client:close()
+end
+
+function clientHandler(client)
+	-- set timeout - 1 minute.
+	client:settimeout(60)
+	-- receive request from client
+	local request_text, err = ladleutil.receiveHTTPRequest(client)
+
+	-- if there's no error, begin serving content or kill server
+	if not err then
+		-- parse request
+		local request = ladleutil.parseRequest(request_text)
+		-- run a prep [e.g. for POST with files - download files]
+		ladleutil.prepMain(request, client)
+		-- begin serving content
+		serve(request, client)
+	end
+end
+
+-- TODO: maybe implement keepalive?
+function waitReceive(server)
+	-- loop while waiting for a client request
+	while 1 do
+		-- accept a client request
+		local client = server:accept()
+		clientHandler(client)
+	end
+end
+
+function loadExtensions()
+	local extdir = "extensions/"
+	local files = ladleutil.scandir(extdir)
+	for i,v in pairs(files) do
+		if v:match("^.+%.lua$")
+		then
+			local extfile = io.open(extdir .. v, "r")
+			local extcode
+			if extfile
+			then
+				extcode = extfile:read("*all")
+			end
+
+			if extcode
+			then
+				local extf, message = load(extcode)
+				if not message
+				then
+					local ext = extf()
+					extensions[ext['id']] = ext
+					print(("Extension %q loaded successfully"):format(ext['name']))
+				else
+					print(("Failed to load extension %s: %q"):format(v, message))
+				end
+			end
+		end
+	end
 end
 
 -- start web server
 function main(arg1)
+	loadExtensions()
+
 	-- command line argument overrides config file entry:
-	port = arg1
+	local port = arg1
 	-- if no port specified on command line, use config entry:
 	if port == nil then port = config['port'] end
 	-- if still no port, fall back to default port, 80:
 	if port == nil then port = 80 end
-	
+
 	-- load hostname from config file:
-	hostname = config['hostname']
+	local hostname = config['hostname']
 	if hostname == nil then hostname = '*' end -- fall back to default
+	
+	if config["webroot"] == "" or config["webroot"] == nil
+	then
+		config["webroot"] = "www/"
+	end
 
 	-- display initial program information
-	print("Ladle web server v0.1.1")
+	print(("%s web server v%s"):format(Server,ServerVersion))
 	print("Copyright (c) 2008 Samuel Saint-Pettersen")
+	print("Copyright (c) 2015 Daniel Rempel")
 
 	-- create tcp socket on localhost:$port
-	server = socket.bind(hostname, port)
+	local server = socket.bind(hostname, port)
 	if not server
 	then
 		print("Failed to bind to given hostname:port")
@@ -45,91 +174,7 @@ function main(arg1)
 
 	-- display message to web server is running
 	print(("Serving on %s:%d"):format(hostname,port))
-	waitReceive() -- begin waiting for client requests
-end
-
--- TODO: Rewrite for multithreading, maybe try implementing keepalive
-function waitReceive()
-	-- loop while waiting for a client request
-	while 1 do
-		-- accept a client request
-		client = server:accept()
-		-- set timeout - 1 minute.
-		client:settimeout(60)
-		-- receive request from client
-		local request, err = client:receive()
-		-- if there's no error, begin serving content or kill server
-		if not err then
-			-- if the request text is 'kill' stop the server
-			-- FIXME: close this awesome security hole
-			if request == "kill" then
-				client:send("Ladle has stopped\n")
-				print("Stopped")
-				break
-			else
-				-- begin serving content
-				serve(request)
-			end
-		end
-	end
-end
-
--- TODO: rewrite, parse whole request into a table
-function serve(request)
-	-- resolve requested file from client request
-	local file = string.match(request, "%w+%/?.?%l+")
-	-- if no file mentioned in request, assume root file is index.html.
-	if file == nil then
-		file = "index.html"
-	end
-		
-	-- retrieve mime type for file based on extension
-	local ext = string.match(file, "%.%l%l%l%l?")
-	local mimetype = mime.getMime(ext)
-
-	-- reply with a response, which includes relevant mime type
-	if nil == mimetype then
-		mimetype = "text/html"
-	end
-
-	-- determine if file is in binary or ASCII format
-	local binary = mime.isBinary(ext)
-
-	-- load requested file in browser
-	local served, flags
-	if binary == false then
-		-- if file is ASCII, use just read flag
-		flags = "r"     
-	else
-		-- otherwise file is binary, so also use binary flag (b)
-		-- note: this is for operating systems which read binary
-		-- files differently to plain text such as Windows
-		flags = "rb"
-	end
-	served = io.open("www/" .. file, flags)
-	if served ~= nil then
-		client:send("HTTP/1.1 200/OK\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")
-	
-		local content = served:read("*all")
-		client:send(content)
-	else
-		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
-		client:send("Content-Type:" .. mimetype .. "\r\n\r\n")
-	
-		-- display not found error
-		err("Not found!")
-	end
-
-	-- done with client, close request
-	client:close()
-end
-
--- display error message and server information
--- used while serving pages (for different errors like 404, 500 etc)
-function err(message)
-	client:send(message)
-	client:send("\n\nLadle web server\n")
+	waitReceive(server) -- begin waiting for client requests
 end
 
 -- invoke program starting point:

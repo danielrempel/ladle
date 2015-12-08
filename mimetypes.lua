@@ -1,10 +1,20 @@
 local mimetypes = {}
 
 function mimetypes.getMime(ext)
-	return mimetypes['mconf'][ext]['mime']
+	if ext == ""
+	then
+		return mimetypes['mconf']['.html']['mime']
+	else
+		return mimetypes['mconf'][ext]['mime']
+	end
 end
 function mimetypes.isBinary(ext)
-	return mimetypes['mconf'][ext]['bin']
+	if ext == ""
+	then
+		return mimetypes['mconf']['.html']['bin']
+	else
+		return mimetypes['mconf'][ext]['bin']
+	end
 end
 
 mimetypes["mconf"] = {
