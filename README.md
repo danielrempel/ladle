@@ -1,6 +1,12 @@
 ## Ladle web server
 Simple lua-based web server with minimal dependencies.
 
+```
+Note:
+ * As of now, Ladle doesn't support anything except GET request (POST is planned in nearest future)
+ * There's still no lua api (to be fixed soon)
+```
+
 Has a simplistic mechanism for extensions, which avails to extend server's functionality by adding handlers for specific filetypes. See `extensions/generic.lua`.
 
 No pages other than index file for web root directory should match `index*`, otherwise they may be treated as index pages and be shown instead of actual index.
