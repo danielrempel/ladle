@@ -3,4 +3,3 @@ write("Content-Type: text/plain; charset=utf8\r\n")
 write("\r\n")
 
 write("Hi! It's a lua script")
-

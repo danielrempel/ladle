@@ -17,6 +17,7 @@ Prerequisites:
 
 * Lua interpreter
 * LuaSocket
+* LFS for lua scripts and pages in web root
 
 ### Lua integration:
 Via modules:

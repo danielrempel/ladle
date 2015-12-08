@@ -1,6 +1,7 @@
 local extension = {}
 
 ladleutil = require('ladleutil')
+lfs = require('lfs')
 
 function extension.handler(request, client, config)
 	tmp_lua_script_output_buffer = ""
@@ -20,8 +21,19 @@ function extension.handler(request, client, config)
 			client:send(message)
 			return
 		end
-		local retval = pcall(func, function(err) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. "\nError: " .. err end)
+		
+		local current_directory = lfs.currentdir() -- Let the script
+		-- have its own dependencies and libs without messing with directories
+		lfs.chdir("www/")
+		local retval = pcall(func,
+					function(err)
+						tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. "\nError: " .. err
+					end
+				)
+		lfs.chdir(current_directory)
+		
 		client:send(tmp_lua_script_output_buffer)
+		
 		return
 	else
 		-- TODO : link to ladle's generic err

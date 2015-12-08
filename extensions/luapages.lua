@@ -1,6 +1,7 @@
 local extension = {}
 
 ladleutil = require('ladleutil')
+lfs = require('lfs')
 
 function extension.executeLua(code, luaEnv, errfunc)
 	local func, message = load(code, "luapage","bt", luaEnv)
@@ -13,6 +14,9 @@ function extension.executeLua(code, luaEnv, errfunc)
 end
 
 function extension.parseLuaPage(page, luaEnv, appendfunc)
+	local current_directory = lfs.currentdir() -- Let the script
+	-- have its own dependencies and libs without messing with directories
+	lfs.chdir("www/")
 	local a,b,c
 	while page:len() > 0 do
 		a,b = page:find("%<%?")
@@ -41,12 +45,15 @@ function extension.parseLuaPage(page, luaEnv, appendfunc)
 			page = ""
 		end
 	end
+	lfs.chdir(current_directory)
 end
 
 function extension.handler(request, client, config)
 	tmp_lua_script_output_buffer = ""
 	local newEnv = _ENV
-	newEnv["write"] = function(text) tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. text end
+	newEnv["write"] =	function(text)
+							tmp_lua_script_output_buffer = tmp_lua_script_output_buffer .. text
+						end
 	
 	local file_l = io.open("www/" .. request["uri"], "r")
 	if file_l
