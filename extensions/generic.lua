@@ -14,6 +14,7 @@ function extension.handler(request, client, config)
 		client:send(content)
 	else
 		-- TODO : link to ladle's generic err
+		ladleutil.trace(("generic: %s not found"):format(config["webroot"] .. file))
 		client:send("HTTP/1.1 404 Not Found\r\nServer: Ladle\r\n")
 		client:send("Content-Type: text/plain\r\n\r\n")
 
