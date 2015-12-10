@@ -58,7 +58,7 @@ function checkURI(uri)
 			local chosenIndex = ""
 
 			for k,v in pairs(wrootIndex) do
-			if v:match("index.*")
+			if v:match("^index.*")
 			then
 				chosenIndex = "" .. v
 				break
@@ -131,9 +131,9 @@ function loadExtensions()
 				then
 					local ext = extf()
 					extensions[ext['id']] = ext
-					print(("Extension %q loaded successfully"):format(ext['name']))
+					ladleutil.trace(("Extension %q loaded successfully"):format(ext['name']))
 				else
-					print(("Failed to load extension %s: %q"):format(v, message))
+					ladleutil.trace(("Failed to load extension %s: %q"):format(v, message))
 				end
 			end
 		end
@@ -161,20 +161,20 @@ function main(arg1)
 	end
 
 	-- display initial program information
-	print(("%s web server v%s"):format(Server,ServerVersion))
-	print("Copyright (c) 2008 Samuel Saint-Pettersen")
-	print("Copyright (c) 2015 Daniel Rempel")
+	ladleutil.trace(("%s web server v%s"):format(Server,ServerVersion))
+	ladleutil.trace("Copyright (c) 2008 Samuel Saint-Pettersen")
+	ladleutil.trace("Copyright (c) 2015 Daniel Rempel")
 
 	-- create tcp socket on localhost:$port
 	local server = socket.bind(hostname, port)
 	if not server
 	then
-		print("Failed to bind to given hostname:port")
+		ladleutil.trace("Failed to bind to given hostname:port")
 		os.exit(1)
 	end
 
 	-- display message to web server is running
-	print(("Serving on %s:%d"):format(hostname,port))
+	ladleutil.trace(("Serving on %s:%d"):format(hostname,port))
 	waitReceive(server) -- begin waiting for client requests
 end
 
