@@ -15,12 +15,8 @@ function ladleutil.getRequestedFileInfo(request)
 	local file = request["uri"]
 
 	-- retrieve mime type for file based on extension
-	local ext = string.match(file, "%.%l%l%l%l?") or ""
+	local ext = string.match(file, "%.%l%l%l?%l?$") or ""
 	local mimetype = mime.getMime(ext)
-	if not mimetype then
-		mimetype = "text/html" -- fallback. didn't think out something
-								-- better
-	end
 
 	local flags
 	if mime.isBinary(ext) == false then
@@ -59,12 +55,58 @@ function ladleutil.receiveHTTPRequest(client)
 	return request,err
 end
 
+function ladleutil.parseQueryString(query_string)
+	-- From lua-wiki
+	local urldecode = function (str)
+							str = string.gsub (str, "+", " ")
+							str = string.gsub (str, "%%(%x%x)",
+									function(h) return string.char(tonumber(h,16)) end
+								)
+							str = string.gsub (str, "\r\n", "\n")
+							return str
+						end
+
+	local retval = {}
+
+	while query_string:len()>0 do
+		local a,b = query_string:find('=')
+		local c = nil
+		local index = query_string:sub( 0, a-1 )
+		b,c = query_string:find('&')
+		local value = ""
+		if b
+		then
+			value = query_string:sub( a+1, b-1 )
+			query_string = query_string:sub(b+1)
+		else
+			value = query_string:sub( a+1 )
+			query_string = ""
+		end
+
+		index = urldecode(index)
+
+		retval[index] = urldecode(value)
+	end
+	return retval
+end
+
 function ladleutil.parseRequest(request)
-	
 	local request_table = {}
 	local request_text = request
 
 	local line = ""
+
+	local a,b = request_text:find("\r*\n")
+	if not a or not b
+	then
+		ladleutil.trace("ladleutil.parseRequest(request):")
+		ladleutil.trace("Suspicious request:")
+		ladleutil.trace(request)
+		ladleutil.trace("=======================================================")
+		ladleutil.trace("Newlines (\\r\\n) not found")
+
+		return {}
+	end
 
 	repeat
 		local a,b = request_text:find("\r*\n")
@@ -72,7 +114,7 @@ function ladleutil.parseRequest(request)
 		request_text = request_text:sub(b+1)
 	until line:len() > 0
 
-	request_table["method"],request_table["url"],request_table["protocol"] = line:match("^(.-) +(.-) +(.-)$")
+	request_table["method"],request_table["url"],request_table["protocol"] = line:match("^([^ ]-) +([^ ]-) +([^ ]-)$")
 
 	while request_text:len() > 0 do
 		local a,b = request_text:find("\r*\n")
@@ -81,17 +123,18 @@ function ladleutil.parseRequest(request)
 
 		if line:len()>0
 		then
-			local key, value = line:match("^(.-): +(.+)$")
+			local key, value = line:match("^([^:]*): +(.+)$")
 			request_table[key] = value
 		end
 	end
-	
-	query_string = (request_table["url"]):match("^/[a-zA-Z.,0-9/]*%??(.*)$") or ""
-	uri = (request_table["url"]):match("^/([a-zA-Z.,0-9/]*)%??.*$") or ""
-	
+
+	query_string = (request_table["url"]):match("^/[^?]*%??(.*)$") or ""
+	uri = (request_table["url"]):match("^/([^?]*)%??.*$") or ""
+
 	request_table["query_string"] = query_string -- TODO: base64 decode?
+	request_table["query"] = ladleutil.parseQueryString(query_string)
 	request_table["uri"] = uri
-	
+
 	return request_table
 end
 
@@ -105,6 +148,10 @@ end
 function ladleutil.err(message,client)
 	client:send(message)
 	client:send("\n\nLadle web server\n")
+end
+
+function ladleutil.trace(message)
+	print(os.date() .. ": " .. message)
 end
 
 return ladleutil
