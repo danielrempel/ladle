@@ -1,17 +1,18 @@
 local mimetypes = {}
 
 function mimetypes.getMime(ext)
-	if ext == ""
+	--print("mimetypes: ext=" .. ext)
+	if ext == "" or mimetypes['mconf'][ext] == nil
 	then
-		return mimetypes['mconf']['.html']['mime']
+		return "application/octet-stream"
 	else
 		return mimetypes['mconf'][ext]['mime']
 	end
 end
 function mimetypes.isBinary(ext)
-	if ext == ""
+	if ext == "" or mimetypes['mconf'][ext] == nil
 	then
-		return mimetypes['mconf']['.html']['bin']
+		return false
 	else
 		return mimetypes['mconf'][ext]['bin']
 	end
